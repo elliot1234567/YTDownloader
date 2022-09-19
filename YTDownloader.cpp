@@ -81,56 +81,62 @@ int WINAPI WinMain( // entry point for a graphical Windows-based application. Es
     );
     UpdateWindow(hWnd);
 
-    // Main message loop:
-    MSG msg;
-    while (GetMessage(&msg, NULL, 0, 0))
-    {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+    //============START MAIN MESSAGE LOOP============//
+    MSG msg; // declaring new messaage
+    while( // while :-) lol
+        GetMessage( // call to get the message
+            &msg, // message pointer
+            NULL, // window handle to get message (null means it gets from any window)
+            0, // the message
+            0 // additional message information
+        )
+    ){
+        TranslateMessage(&msg); // translates message into characters
+        DispatchMessage(&msg); // sends message to wndproc
     }
 
-    return (int)msg.wParam;
+    return (int)msg.wParam; // returns message
+    //============END MAIN MESSAGE LOOP============//
 }
 
-//  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
-//
-//  PURPOSE:  Processes messages for the main window.
-//
-//  WM_PAINT    - Paint the main window
-//  WM_DESTROY  - post a quit message and return
-LRESULT CALLBACK WndProc(
-    HWND hWnd,
-    UINT message,
-    WPARAM wParam,
-    LPARAM lParam
+LRESULT CALLBACK WndProc( // creating WndProc function
+    HWND hWnd, // window handle
+    UINT message, // message
+    WPARAM wParam, // additional message information
+    LPARAM lParam // additional message information
 )
 {
-    PAINTSTRUCT ps;
-    HDC hdc;
-    TCHAR greeting[] = _T("This is a youtube video downloader!!!");
+    PAINTSTRUCT ps; // declare paintstruct object
+    HDC hdc; // handle to device context
+    TCHAR greeting[] = _T("This is a youtube video downloader!!!"); // greeting
 
-    switch (message)
-    {
-    case WM_PAINT:
-        hdc = BeginPaint(hWnd, &ps);
-
-        // Here your application is laid out.
-        // For this introduction, we just print out "Hello, Windows desktop!"
-        // in the top left corner.
-        TextOut(hdc,
-            5, 5,
-            greeting, _tcslen(greeting));
-        // End application-specific layout section.
-
-        EndPaint(hWnd, &ps);
-        break;
-    case WM_DESTROY:
-        PostQuitMessage(0);
-        break;
-    default:
-        return DefWindowProc(hWnd, message, wParam, lParam);
-        break;
+    switch (message) { // switch :-) lol
+    case WM_PAINT: // when request is sent to paint part of the window
+        hdc = BeginPaint(hWnd, &ps); // initialize device context handle as a beginpaint object
+        TextOut(
+            hdc, // device context handle object
+            5, 5, // coordinates
+            greeting, _tcslen(greeting) // greeting
+        );
+        EndPaint(hWnd, &ps); // ends paint
+        break; // breaks out of case
+    case WM_DESTROY: // when window is destroyed
+        PostQuitMessage(0); // terminatation message
+        break; // breaks out of case
+    case WM_CLOSE: // when window is closed
+        if (MessageBox(hWnd, L"Really quit?", L"YTDownloader", MB_OKCANCEL) == IDOK) // message box asking user if they meant to quit
+        {
+            DestroyWindow(hWnd);// closes application
+        }
+        break;// breaks out of case
+    default: // default case
+        return DefWindowProc( // handle other messages
+            hWnd, // window handle
+            message, // message
+            wParam, // additional message information
+            lParam // additional message information
+        );
+        break; // breaks out of case
     }
-
-    return 0;
+    return 0; // return success
 }
