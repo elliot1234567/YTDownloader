@@ -22,7 +22,7 @@ int WINAPI WinMain( // entry point for a graphical Windows-based application. Es
 {
     WNDCLASSEX wcex; // declaring window structure
 
-//================ START WINDOW CONFIGURATION=====================//
+//================ START WINDOW CONFIGURATION===============//
     wcex.cbSize = sizeof(WNDCLASSEX);
     wcex.style = CS_HREDRAW | CS_VREDRAW;
     wcex.lpfnWndProc = WndProc;
@@ -126,7 +126,7 @@ LRESULT CALLBACK WndProc( // creating WndProc function
     case WM_CLOSE: // when window is closed
         if (MessageBox(hWnd, L"Really quit?", L"YTDownloader", MB_OKCANCEL) == IDOK) // message box asking user if they meant to quit
         {
-            DestroyWindow(hWnd);// closes application
+            DestroyWindow(hWnd); // closes application
         }
         break;// breaks out of case
     default: // default case
