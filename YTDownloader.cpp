@@ -2,14 +2,19 @@
 // COMMENT THE DIFFERENT SECTIONS AND HOW THEY WORK
 
 #include <windows.h>
+#include <shobjidl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <tchar.h>
+#include <shobjidl.h>
+#include <shlobj_core.h>
+
 
 // Global variables
 
 static TCHAR szWindowClass[] = _T("YTDownloader"); // The main window class name.
 static TCHAR szTitle[] = _T("YTDownloder"); // The string that appears in the application's title bar.
+static PWSTR outputPath; // variable for output path
 HINSTANCE hInst; // Stored instance handle for use in Win32 API calls such as FindResource
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM); // Forward declarations of functions included in this code module:
 
@@ -22,7 +27,7 @@ int WINAPI WinMain( // entry point for a graphical Windows-based application. Es
 {
     WNDCLASSEX wcex; // declaring window structure
 
-//================ START WINDOW CONFIGURATION===============//
+//================ START WINDOW CONFIGURATION=====================//
     wcex.cbSize = sizeof(WNDCLASSEX);
     wcex.style = CS_HREDRAW | CS_VREDRAW;
     wcex.lpfnWndProc = WndProc;
@@ -35,7 +40,7 @@ int WINAPI WinMain( // entry point for a graphical Windows-based application. Es
     wcex.lpszMenuName = NULL;
     wcex.lpszClassName = szWindowClass;
     wcex.hIconSm = LoadIcon(wcex.hInstance, IDI_APPLICATION);
-//==================END WINDOW CONFIGURATION================//
+//==================END WINDOW CONFIGURATION======================//
 
     if (!RegisterClassEx(&wcex)) // checks to see if the registration of &wcex (window pointer) with windows OS failed.
     {
@@ -62,6 +67,48 @@ int WINAPI WinMain( // entry point for a graphical Windows-based application. Es
         NULL, // this application does not have a menu bar
         hInstance, // the first parameter from WinMain
         NULL // not used in this application
+    );
+
+    HWND browseOutput = CreateWindow(
+        L"BUTTON",  // Predefined class; Unicode assumed 
+        L"OUTPUT DIRECTORY",      // Button text 
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,  // Styles 
+        10,         // x position 
+        400,         // y position 
+        200,        // Button width
+        50,        // Button height
+        hWnd,     // Parent window
+        NULL,       // No menu.
+        (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE),
+        NULL // Pointer not needed.
+    );
+
+    HWND download = CreateWindow(
+        L"BUTTON",  // Predefined class; Unicode assumed 
+        L"DOWNLOAD",      // Button text 
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,  // Styles 
+        270,         // x position 
+        400,         // y position 
+        200,        // Button width
+        50,        // Button height
+        hWnd,     // Parent window
+        NULL,       // No menu.
+        (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE),
+        NULL // Pointer not needed.
+    );
+    
+    HWND ytLink = CreateWindow(
+        L"EDIT",  // Predefined class; Unicode assumed 
+        L"TEST",      // Button text 
+        WS_CHILD | WS_VISIBLE | WS_BORDER,  // Styles 
+        10,         // x position 
+        100,         // y position 
+        200,        // Button width
+        20,        // Button height
+        hWnd,     // Parent window
+        NULL,       // No menu.
+        (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE),
+        NULL // Pointer not needed.
     );
 
     if (!hWnd) // checks to see if handle for window is true, if false:
@@ -91,6 +138,53 @@ int WINAPI WinMain( // entry point for a graphical Windows-based application. Es
             0 // additional message information
         )
     ){
+//================================DIRECTORY BROWSE BUTTON===================================//
+        if (SendMessage(browseOutput, BM_GETSTATE, 0, 0)) {
+            HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED |
+                COINIT_DISABLE_OLE1DDE);
+            if (SUCCEEDED(hr))
+            {
+                IFileOpenDialog* pFileOpen;
+                
+                // Create the FileOpenDialog object.
+                hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL,
+                    IID_IFileOpenDialog, reinterpret_cast<void**>(&pFileOpen));
+
+                if (SUCCEEDED(hr))
+                {
+                    // Show the Open dialog box.
+                    pFileOpen->SetOptions(
+                        FOS_PICKFOLDERS
+                    );
+                    hr = pFileOpen->Show(NULL);
+
+                    // Get the file name from the dialog box.
+                    if (SUCCEEDED(hr))
+                    {
+                        IShellItem* pItem;
+                        hr = pFileOpen->GetResult(&pItem);
+                        if (SUCCEEDED(hr))
+                        {
+                            PWSTR pszFilePath;
+                            hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+
+                            // Display the file name to the user.
+                            if (SUCCEEDED(hr))
+                            {
+                                MessageBoxW(NULL, pszFilePath, L"File Path", MB_OK);
+                                outputPath = pszFilePath;
+                                CoTaskMemFree(pszFilePath);
+                            }
+                            pItem->Release();
+                        }
+                    }
+                    pFileOpen->Release();
+                }
+                CoUninitialize();
+            }
+        }
+//================================END DIRECTORY BROWSE BUTTON===============================//
+
         TranslateMessage(&msg); // translates message into characters
         DispatchMessage(&msg); // sends message to wndproc
     }
