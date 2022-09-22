@@ -8,13 +8,14 @@
 #include <tchar.h>
 #include <shobjidl.h>
 #include <shlobj_core.h>
-
+#include <Python.h>
 
 // Global variables
 
 static TCHAR szWindowClass[] = _T("YTDownloader"); // The main window class name.
 static TCHAR szTitle[] = _T("YTDownloder"); // The string that appears in the application's title bar.
 static PWSTR outputPath; // variable for output path
+static LRESULT youtubeLink; // youtube link to download
 HINSTANCE hInst; // Stored instance handle for use in Win32 API calls such as FindResource
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM); // Forward declarations of functions included in this code module:
 
@@ -99,11 +100,11 @@ int WINAPI WinMain( // entry point for a graphical Windows-based application. Es
     
     HWND ytLink = CreateWindow(
         L"EDIT",  // Predefined class; Unicode assumed 
-        L"TEST",      // Button text 
-        WS_CHILD | WS_VISIBLE | WS_BORDER,  // Styles 
+        L"YOUTUBE LINK",      // Button text 
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL | ES_MULTILINE,  // Styles 
         10,         // x position 
         100,         // y position 
-        200,        // Button width
+        400,        // Button width
         20,        // Button height
         hWnd,     // Parent window
         NULL,       // No menu.
@@ -138,6 +139,7 @@ int WINAPI WinMain( // entry point for a graphical Windows-based application. Es
             0 // additional message information
         )
     ){
+
 //================================DIRECTORY BROWSE BUTTON===================================//
         if (SendMessage(browseOutput, BM_GETSTATE, 0, 0)) {
             HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED |
@@ -184,6 +186,27 @@ int WINAPI WinMain( // entry point for a graphical Windows-based application. Es
             }
         }
 //================================END DIRECTORY BROWSE BUTTON===============================//
+
+//================================START DOWNLOAD BUTTON===============================//
+        if (SendMessage(download, BM_GETSTATE, 0, 0)) {
+            youtubeLink = SendMessage(ytLink, WM_GETTEXT, 0, 0); // gets the text from the ytlink hwnd
+            Py_Initialize();
+            PyObject* pName, * pModule, * pFunc, * pArgs, * pValue;
+            pName = PyUnicode_FromString((char*)"Downloader");
+            pModule = PyImport_Import(pName);
+            pFunc = PyObject_GetAttrString(pModule, (char*)"download");
+            pArgs = PyTuple_Pack(
+                3,
+                PyUnicode_FromString((char*)youtubeLink),
+                PyUnicode_FromString((char*)outputPath),
+                PyUnicode_FromString((char*)"False")
+            );
+            pValue = PyObject_CallObject(pFunc, pArgs);
+            auto result = _PyUnicode_AsString(pValue);
+            Py_Finalize();
+        }
+//================================END DOWNLOAD BUTTON===============================//
+
 
         TranslateMessage(&msg); // translates message into characters
         DispatchMessage(&msg); // sends message to wndproc
