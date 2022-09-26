@@ -9,15 +9,29 @@
 #include <shobjidl.h>
 #include <shlobj_core.h>
 #include <Python.h>
+#include <clocale>
+#include <cstdlib>
+#include <string>
+#include <atlstr.h>
+#include <iostream>
 
 // Global variables
 
 static TCHAR szWindowClass[] = _T("YTDownloader"); // The main window class name.
 static TCHAR szTitle[] = _T("YTDownloder"); // The string that appears in the application's title bar.
-static PWSTR outputPath; // variable for output path
-static LRESULT youtubeLink; // youtube link to download
+static LPWSTR youtubeLink;
+static char* yt;
 HINSTANCE hInst; // Stored instance handle for use in Win32 API calls such as FindResource
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM); // Forward declarations of functions included in this code module:
+
+std::string utf8_encode(const std::wstring& wstr)
+{
+    if (wstr.empty()) return std::string();
+    int size_needed = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), NULL, 0, NULL, NULL);
+    std::string strTo(size_needed, 0);
+    WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &strTo[0], size_needed, NULL, NULL);
+    return strTo;
+}
 
 int WINAPI WinMain( // entry point for a graphical Windows-based application. Essentially the main() function
     _In_ HINSTANCE hInstance, // current instance of the application
@@ -70,25 +84,11 @@ int WINAPI WinMain( // entry point for a graphical Windows-based application. Es
         NULL // not used in this application
     );
 
-    HWND browseOutput = CreateWindow(
-        L"BUTTON",  // Predefined class; Unicode assumed 
-        L"OUTPUT DIRECTORY",      // Button text 
-        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,  // Styles 
-        10,         // x position 
-        400,         // y position 
-        200,        // Button width
-        50,        // Button height
-        hWnd,     // Parent window
-        NULL,       // No menu.
-        (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE),
-        NULL // Pointer not needed.
-    );
-
     HWND download = CreateWindow(
         L"BUTTON",  // Predefined class; Unicode assumed 
         L"DOWNLOAD",      // Button text 
         WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,  // Styles 
-        270,         // x position 
+        140,         // x position 
         400,         // y position 
         200,        // Button width
         50,        // Button height
@@ -97,7 +97,6 @@ int WINAPI WinMain( // entry point for a graphical Windows-based application. Es
         (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE),
         NULL // Pointer not needed.
     );
-    
     HWND ytLink = CreateWindow(
         L"EDIT",  // Predefined class; Unicode assumed 
         L"YOUTUBE LINK",      // Button text 
@@ -140,74 +139,28 @@ int WINAPI WinMain( // entry point for a graphical Windows-based application. Es
         )
     ){
 
-//================================DIRECTORY BROWSE BUTTON===================================//
-        if (SendMessage(browseOutput, BM_GETSTATE, 0, 0)) {
-            HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED |
-                COINIT_DISABLE_OLE1DDE);
-            if (SUCCEEDED(hr))
-            {
-                IFileOpenDialog* pFileOpen;
-                
-                // Create the FileOpenDialog object.
-                hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL,
-                    IID_IFileOpenDialog, reinterpret_cast<void**>(&pFileOpen));
-
-                if (SUCCEEDED(hr))
-                {
-                    // Show the Open dialog box.
-                    pFileOpen->SetOptions(
-                        FOS_PICKFOLDERS
-                    );
-                    hr = pFileOpen->Show(NULL);
-
-                    // Get the file name from the dialog box.
-                    if (SUCCEEDED(hr))
-                    {
-                        IShellItem* pItem;
-                        hr = pFileOpen->GetResult(&pItem);
-                        if (SUCCEEDED(hr))
-                        {
-                            PWSTR pszFilePath;
-                            hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
-
-                            // Display the file name to the user.
-                            if (SUCCEEDED(hr))
-                            {
-                                MessageBoxW(NULL, pszFilePath, L"File Path", MB_OK);
-                                outputPath = pszFilePath;
-                                CoTaskMemFree(pszFilePath);
-                            }
-                            pItem->Release();
-                        }
-                    }
-                    pFileOpen->Release();
-                }
-                CoUninitialize();
-            }
-        }
-//================================END DIRECTORY BROWSE BUTTON===============================//
-
 //================================START DOWNLOAD BUTTON===============================//
         if (SendMessage(download, BM_GETSTATE, 0, 0)) {
-            youtubeLink = SendMessage(ytLink, WM_GETTEXT, 0, 0); // gets the text from the ytlink hwnd
+            int textLength = GetWindowTextLength(ytLink);
+            LPWSTR pszMem = (LPWSTR)VirtualAlloc((LPVOID)NULL,
+                (DWORD)(textLength + 1), MEM_COMMIT,
+                PAGE_READWRITE);
+            GetWindowText(ytLink, pszMem, textLength + 1);
             Py_Initialize();
+            // CODE TO RUN PYTHON FUNCTION
+            PyObject* output = PyUnicode_FromString("C:\\Users\\Elliot Scher\\Videos");
+            PyObject* ytlink = PyUnicode_FromString(utf8_encode(pszMem).c_str());
             PyObject* pName, * pModule, * pFunc, * pArgs, * pValue;
             pName = PyUnicode_FromString((char*)"Downloader");
             pModule = PyImport_Import(pName);
             pFunc = PyObject_GetAttrString(pModule, (char*)"download");
-            pArgs = PyTuple_Pack(
-                3,
-                PyUnicode_FromString((char*)youtubeLink),
-                PyUnicode_FromString((char*)outputPath),
-                PyUnicode_FromString((char*)"False")
-            );
+            pArgs = PyTuple_Pack(2, (char*)ytlink, (char*)output);
             pValue = PyObject_CallObject(pFunc, pArgs);
-            auto result = _PyUnicode_AsString(pValue);
             Py_Finalize();
         }
 //================================END DOWNLOAD BUTTON===============================//
 
-
+        
         TranslateMessage(&msg); // translates message into characters
         DispatchMessage(&msg); // sends message to wndproc
     }
